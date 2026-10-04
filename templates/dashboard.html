@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="top">
+  <div><h1>Hello, {{ user_name.split()[0] }} 👋</h1><p class="sub">Here's how your loan portfolio looks today.</p></div>
+  <div style="display:flex;gap:10px"><button class="icon-btn" data-theme-toggle title="Toggle theme" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button><a class="btn" href="{{ url_for('assess') }}">+ New assessment</a></div>
+</div>
+
+<div class="grid g4">
+  <div class="card kpi"><div class="ic" style="background:var(--brand-soft);color:var(--brand)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg></div><div><small>Assessments</small><b>{{ total }}</b></div></div>
+  <div class="card kpi"><div class="ic" style="background:var(--high-soft);color:var(--high)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div><div><small>High-risk cases</small><b>{{ counts.High }}</b></div></div>
+  <div class="card kpi"><div class="ic" style="background:var(--mid-soft);color:var(--mid)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg></div><div><small>Avg. default risk</small><b>{{ '%.1f'|format(avg*100) }}%</b></div></div>
+  <div class="card kpi"><div class="ic" style="background:var(--low-soft);color:var(--low)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div><small>Loan volume</small><b>${{ '%.2f'|format(volume/1000000) }}M</b></div></div>
+</div>
+
+<div class="grid g-21 mt">
+  <div class="card"><h3>Risk trend</h3><p class="hint">Default probability of your latest assessments</p>
+    {% if trend %}<div style="height:260px"><canvas id="trend"></canvas></div>
+    {% else %}<div class="empty"><b>No assessments yet</b>Run your first assessment to see the trend.<br><br><a class="btn sm" href="{{ url_for('assess') }}">Start now</a></div>{% endif %}
+  </div>
+  <div class="card"><h3>Risk mix</h3><p class="hint">Distribution by risk band</p>
+    <div style="height:200px"><canvas id="mix"></canvas></div>
+    <div class="legend"><span><i style="background:var(--low)"></i>Low {{ counts.Low }}</span><span><i style="background:var(--mid)"></i>Moderate {{ counts.Moderate }}</span><span><i style="background:var(--high)"></i>High {{ counts.High }}</span></div>
+  </div>
+</div>
+
+<div class="grid g-21 mt">
+  <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><div><h3>Recent assessments</h3><p class="hint" style="margin:0">Your latest decisions</p></div><a class="btn ghost sm" href="{{ url_for('history') }}">View all</a></div>
+    {% if recent %}<table style="margin-top:10px"><thead><tr><th>Applicant</th><th>Date</th><th>Risk</th><th></th></tr></thead><tbody>
+    {% for r in recent %}<tr><td><div class="who"><div class="av">{{ r.applicant[0]|upper }}</div>{{ r.applicant }}</div></td><td>{{ r.created }}</td>
+      <td><span class="pill {{ r.band }}">{{ r.band }} · {{ '%.1f'|format(r.probability*100) }}%</span></td><td><a href="{{ url_for('result', aid=r.id) }}" style="color:var(--brand);font-weight:700">Open →</a></td></tr>{% endfor %}
+    </tbody></table>{% else %}<div class="empty">Nothing here yet.</div>{% endif %}
+  </div>
+  <div class="card"><h3>Model leaderboard</h3><p class="hint">ROC-AUC on held-out test data</p><div style="height:230px"><canvas id="models"></canvas></div>
+    <p class="note" style="margin-top:10px">Active model: <b>{{ best_model }}</b></p></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chart.umd.js') }}"></script>
+<script>
+const trend={{ trend|tojson }}, counts={{ counts|tojson }}, models={{ models|tojson }};
+let charts=[];
+function draw(){
+  charts.forEach(c=>c.destroy());charts=[];
+  const txt=cssVar('--muted'),line=cssVar('--line'),brand=cssVar('--brand');
+  Chart.defaults.font.family="'Plus Jakarta Sans',sans-serif";Chart.defaults.color=txt;
+  const t=document.getElementById('trend');
+  if(t)charts.push(new Chart(t,{type:'line',data:{labels:trend.map(x=>x.label),datasets:[{data:trend.map(x=>x.p),borderColor:brand,backgroundColor:brand+'22',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:brand,borderWidth:3}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'% default risk'}}},scales:{y:{min:0,max:100,grid:{color:line},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}}));
+  charts.push(new Chart(document.getElementById('mix'),{type:'doughnut',data:{labels:['Low','Moderate','High'],datasets:[{data:[counts.Low,counts.Moderate,counts.High].every(v=>v===0)?[1,0,0]:[counts.Low,counts.Moderate,counts.High],backgroundColor:[cssVar('--low'),cssVar('--mid'),cssVar('--high')],borderWidth:0,spacing:3}]},options:{maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false}}}}));
+  charts.push(new Chart(document.getElementById('models'),{type:'bar',data:{labels:models.map(m=>m.name.replace(' (MLP)','').replace('Support Vector Machine','SVM').replace('Logistic Regression','Logistic Reg.').replace('Gaussian Naive Bayes','Naive Bayes')),datasets:[{data:models.map(m=>m.auc),backgroundColor:[brand,brand+'99',brand+'99',brand+'99'].map((c,i)=>models[i].auc===Math.max(...models.map(m=>m.auc))?brand:brand+'66'),borderRadius:8}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{min:.6,max:1,grid:{color:line}},y:{grid:{display:false}}}}}));
+}
+draw();document.addEventListener('themechange',draw);
+</script>
+{% endblock %}

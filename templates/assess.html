@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}New assessment{% endblock %}
+{% macro num(name, label, ph, step='1', prefix='', note='', max='') %}
+<div><label for="{{ name }}">{{ label }}</label>
+  <div class="inp-wrap">{% if prefix %}<em>{{ prefix }}</em>{% endif %}<input id="{{ name }}" name="{{ name }}" type="number" step="{{ step }}" min="0" {% if max %}max="{{ max }}"{% endif %} required placeholder="{{ ph }}" value="{{ form.get(name, '') }}" {% if not prefix %}style="padding-left:14px"{% endif %}></div>
+  {% if note %}<div class="note">{{ note }}</div>{% endif %}</div>
+{% endmacro %}
+{% macro sel(name, label, opts, note='') %}
+<div><label for="{{ name }}">{{ label }}</label><select id="{{ name }}" name="{{ name }}">{% for o in opts %}<option value="{{ o }}" {{ 'selected' if form.get(name)==o }}>{{ vl.get(o, o) }}{% if name=='loan_grade' %} {{ {'A':'(best)','G':'(highest risk)'}.get(o,'') }}{% endif %}</option>{% endfor %}</select>
+  {% if note %}<div class="note">{{ note }}</div>{% endif %}</div>
+{% endmacro %}
+{% block content %}
+<div class="top"><div><h1>New assessment</h1><p class="sub">Enter the applicant's details to predict loan default risk.</p></div>
+  <button class="icon-btn" data-theme-toggle title="Toggle theme" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></div>
+<form method="post" class="grid" style="gap:18px">
+  <div class="card"><div class="sec-title"><span>1</span><h3>Personal details</h3></div>
+    <div class="fields">
+      <div class="span2"><label for="applicant">Applicant name</label><input id="applicant" name="applicant" placeholder="e.g. Ravi Kumar" value="{{ form.get('applicant','') }}"></div>
+      {{ num('person_age','Age','32','1','','','80') }}
+      {{ sel('person_home_ownership','Home ownership',cat.person_home_ownership) }}
+    </div></div>
+  <div class="card"><div class="sec-title"><span>2</span><h3>Employment &amp; income</h3></div>
+    <div class="fields">
+      {{ num('person_income','Annual income','60000','500','$') }}
+      {{ num('person_emp_length','Employment length (years)','5','0.5','','Years in current job','50') }}
+    </div></div>
+  <div class="card"><div class="sec-title"><span>3</span><h3>Loan request</h3></div>
+    <div class="fields">
+      {{ sel('loan_intent','Purpose',cat.loan_intent) }}
+      {{ num('loan_amnt','Loan amount','10000','500','$') }}
+      {{ num('loan_int_rate','Interest rate (% p.a.)','11.5','0.01','','Offered by the lender','40') }}
+      {{ sel('loan_grade','Loan grade',cat.loan_grade,'Lender-assigned grade, A is best') }}
+      <div class="span2"><label>Loan-to-income</label><div class="note" id="lti" style="font-size:14px;margin-top:10px">Fill income and loan amount to see the ratio</div></div>
+    </div></div>
+  <div class="card"><div class="sec-title"><span>4</span><h3>Credit history</h3></div>
+    <div class="fields">
+      {{ sel('cb_person_default_on_file','Past default on file?',cat.cb_person_default_on_file) }}
+      {{ num('cb_person_cred_hist_length','Credit history length (years)','6','1','','Years since first credit account','60') }}
+    </div></div>
+  <div style="display:flex;justify-content:flex-end;gap:10px"><a class="btn ghost" href="{{ url_for('dashboard') }}">Cancel</a><button class="btn">Predict risk →</button></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+const inc=document.getElementById('person_income'),amt=document.getElementById('loan_amnt'),ltiEl=document.getElementById('lti');
+function lti(){ if(+inc.value>0&&+amt.value>0){const r=amt.value/inc.value*100;ltiEl.innerHTML='<b>'+r.toFixed(1)+'%</b> of annual income'+(r>35?' <span class="up">· high</span>':'');}}
+inc.addEventListener('input',lti);amt.addEventListener('input',lti);lti();
+</script>
+{% endblock %}

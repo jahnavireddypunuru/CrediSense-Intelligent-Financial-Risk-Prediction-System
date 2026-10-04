@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}CrediSense{% endblock %} · CrediSense</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script>try{var t=localStorage.getItem('cs-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+</head>
+<body>
+{% macro ico(n) %}
+{% if n=='grid' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>
+{% elif n=='plus' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+{% elif n=='clock' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+{% elif n=='cpu' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>
+{% elif n=='out' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+{% endif %}
+{% endmacro %}
+<div class="shell">
+  <aside class="side">
+    <div class="logo"><i>◆</i>CrediSense</div>
+    <nav class="nav">
+      <a href="{{ url_for('dashboard') }}" class="{{ 'on' if ep=='dashboard' }}">{{ ico('grid') }}<span>Dashboard</span></a>
+      <a href="{{ url_for('assess') }}" class="{{ 'on' if ep=='assess' }}">{{ ico('plus') }}<span>New assessment</span></a>
+      <a href="{{ url_for('history') }}" class="{{ 'on' if ep in ('history','result') }}">{{ ico('clock') }}<span>History</span></a>
+      <a href="{{ url_for('models') }}" class="{{ 'on' if ep=='models' }}">{{ ico('cpu') }}<span>Model lab</span></a>
+    </nav>
+    <div class="foot">
+      <div class="me"><div class="av">{{ user_name[0]|upper }}</div><div><b>{{ user_name }}</b><small>Credit analyst</small></div></div>
+      <nav class="nav" style="margin-top:8px"><a href="{{ url_for('logout') }}">{{ ico('out') }}<span>Sign out</span></a></nav>
+    </div>
+  </aside>
+  <main class="main">
+    {% with msgs = get_flashed_messages(with_categories=true) %}{% for c,m in msgs %}<div class="flash {{ c }}">{{ m }}</div>{% endfor %}{% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body></html>

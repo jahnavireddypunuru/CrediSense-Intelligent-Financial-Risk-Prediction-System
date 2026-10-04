@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Model lab{% endblock %}
+{% set desc = {
+ 'Logistic Regression':'Linear model that maps weighted features through a sigmoid to a default probability. Fast, stable and interpretable.',
+ 'Support Vector Machine':'Finds the maximum-margin boundary in an RBF kernel space (Nystroem approximation for speed). Handles non-linear patterns; probabilities are calibrated.',
+ 'Gaussian Naive Bayes':'Probabilistic classifier applying Bayes’ theorem with a feature-independence assumption on power-transformed inputs.',
+ 'Neural Network (MLP)':'Two hidden layers (48 and 24 neurons) trained by back-propagation with early stopping.'} %}
+{% block content %}
+<div class="top"><div><h1>Model lab</h1><p class="sub">Four algorithms trained on {{ '{:,}'.format(meta.rows) }} real loans from the Kaggle Credit Risk Dataset ({{ '%.0f'|format(meta.default_rate*100) }}% defaulted). The best by ROC-AUC powers predictions.</p></div>
+  <button class="icon-btn" data-theme-toggle title="Toggle theme" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></div>
+
+<div class="grid g4 algo-grid">
+{% for m in meta.results %}
+  <div class="card {{ 'best' if m.name==meta.best }}">{% if m.name==meta.best %}<span class="badge">ACTIVE MODEL</span>{% endif %}
+    <h3>{{ m.name }}</h3><p>{{ desc[m.name] }}</p>
+    <div style="margin-top:12px">
+      <div class="metric"><span>ROC-AUC</span><b>{{ '%.3f'|format(m.roc_auc) }}</b></div>
+      <div class="metric"><span>Accuracy</span><b>{{ '%.1f'|format(m.accuracy*100) }}%</b></div>
+      <div class="metric"><span>Precision</span><b>{{ '%.1f'|format(m.precision*100) }}%</b></div>
+      <div class="metric"><span>Recall</span><b>{{ '%.1f'|format(m.recall*100) }}%</b></div>
+      <div class="metric"><span>F1 score</span><b>{{ '%.1f'|format(m.f1*100) }}%</b></div>
+      <div class="metric"><span>5-fold CV AUC</span><b>{{ '%.3f'|format(m.cv_auc_mean) }} ± {{ '%.3f'|format(m.cv_auc_std) }}</b></div>
+    </div></div>
+{% endfor %}
+</div>
+
+<div class="card mt"><h3>Dataset</h3><p class="hint">Kaggle · Credit Risk Dataset · credit_risk_dataset.csv</p>
+  <div class="grid g4" style="gap:10px 30px">
+    <div class="metric" style="display:block"><span>Raw rows</span><br><b>{{ '{:,}'.format(meta.data_report.raw_rows) }}</b></div>
+    <div class="metric" style="display:block"><span>Duplicates removed</span><br><b>{{ meta.data_report.duplicates_removed }}</b></div>
+    <div class="metric" style="display:block"><span>Impossible values removed</span><br><b>{{ meta.data_report.outliers_removed }}</b></div>
+    <div class="metric" style="display:block"><span>Clean rows used</span><br><b>{{ '{:,}'.format(meta.data_report.clean_rows) }}</b></div>
+  </div>
+  <p class="note" style="margin-top:12px">Missing values filled with the median: {% for k,v in meta.data_report.missing.items() %}{{ labels[k] }} ({{ v }}){{ ', ' if not loop.last }}{% endfor %}. 80/20 stratified train-test split.</p></div>
+
+<div class="grid g-12 mt">
+  <div class="card"><h3>ROC curves</h3><p class="hint">Higher and further left is better</p><div style="height:320px"><canvas id="roc"></canvas></div></div>
+  <div class="card"><h3>Confusion matrix · {{ meta.best }}</h3><p class="hint">Held-out test set (20% of data)</p>
+    {% set cm = (meta.results|selectattr('name','equalto',meta.best)|first).confusion %}
+    <div class="cm">
+      <div style="background:var(--low-soft);color:var(--low)"><b>{{ cm[0][0] }}</b><small>True repay</small></div>
+      <div style="background:var(--mid-soft);color:var(--mid)"><b>{{ cm[0][1] }}</b><small>False alarm</small></div>
+      <div style="background:var(--high-soft);color:var(--high)"><b>{{ cm[1][0] }}</b><small>Missed default</small></div>
+      <div style="background:var(--low-soft);color:var(--low)"><b>{{ cm[1][1] }}</b><small>True default</small></div>
+    </div>
+    <p class="note" style="margin-top:14px;text-align:center">Decision threshold {{ '%.0f'|format(meta.threshold*100) }}% · tuned on cross-validated training predictions</p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chart.umd.js') }}"></script>
+<script>
+const res={{ meta.results|tojson }};let ch;
+function draw(){ if(ch)ch.destroy();
+  const cols=[cssVar('--brand'),cssVar('--low'),cssVar('--mid'),cssVar('--high')];
+  Chart.defaults.color=cssVar('--muted');Chart.defaults.font.family="'Plus Jakarta Sans',sans-serif";
+  ch=new Chart(document.getElementById('roc'),{type:'line',data:{datasets:[
+    ...res.map((m,i)=>({label:m.name+' (AUC '+m.roc_auc.toFixed(3)+')',data:m.roc.fpr.map((x,j)=>({x,y:m.roc.tpr[j]})),borderColor:cols[i],borderWidth:2.5,pointRadius:0,tension:.2})),
+    {label:'Random guess',data:[{x:0,y:0},{x:1,y:1}],borderColor:cssVar('--line'),borderDash:[6,6],pointRadius:0,borderWidth:2}]},
+   options:{maintainAspectRatio:false,parsing:false,scales:{x:{type:'linear',min:0,max:1,title:{display:true,text:'False positive rate'},grid:{color:cssVar('--line')}},y:{min:0,max:1,title:{display:true,text:'True positive rate'},grid:{color:cssVar('--line')}}},plugins:{legend:{position:'bottom',labels:{boxWidth:22,boxHeight:3}}}}});}
+draw();document.addEventListener('themechange',draw);
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Result{% endblock %}
+{% block content %}
+{% set color = {'Low':'var(--low)','Moderate':'var(--mid)','High':'var(--high)'}[a.band] %}
+<div class="top"><div><h1>{{ a.applicant }}</h1><p class="sub">Assessed on {{ a.created }} using {{ best_model }}</p></div>
+  <div style="display:flex;gap:10px"><button class="icon-btn" data-theme-toggle title="Toggle theme" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button><a class="btn" href="{{ url_for('assess') }}">+ New assessment</a></div></div>
+
+<div class="grid g-12">
+  <div class="card">
+    <h3 style="text-align:center">Default probability</h3>
+    <div class="gauge-wrap"><canvas id="gauge" height="170"></canvas>
+      <div class="gauge-val"><b class="mono" style="color:{{ color }}">{{ '%.1f'|format(p*100) }}%</b><small>chance of default</small></div></div>
+    <div class="verdict"><span class="pill {{ a.band }}">{{ a.band }} risk</span>
+      <p class="note" style="margin-top:10px">{% if a.band=='Low' %}Likely to repay{% elif a.band=='High' %}Likely to default{% else %}Borderline: review recommended{% endif %} · decision threshold {{ '%.0f'|format(threshold*100) }}%</p></div>
+    <div style="margin-top:18px">
+      <div class="stat-row"><span>Loan requested</span><b>${{ '{:,.0f}'.format(row.loan_amnt) }}</b></div>
+      <div class="stat-row"><span>Loan / annual income</span><b class="{{ 'up' if lti>0.35 }}">{{ '%.0f'|format(lti*100) }}%</b></div>
+      <div class="stat-row"><span>Interest rate</span><b>{{ '%.2f'|format(row.loan_int_rate) }}%</b></div>
+      <div class="stat-row"><span>Loan grade</span><b>{{ row.loan_grade }}</b></div>
+    </div>
+  </div>
+  <div class="grid" style="align-content:start">
+    <div class="card"><h3>What drove this score</h3><p class="hint">Change in default probability versus an average applicant, per factor. Red raises risk, green lowers it.</p>
+      {% set mx = (factors|map(attribute='impact')|map('abs')|max) or 1 %}
+      {% for f in factors %}
+      <div class="factor"><span>{{ f.feature }}</span>
+        <div class="bar"><i style="background:{{ 'var(--high)' if f.impact>0 else 'var(--low)' }};{% if f.impact>0 %}left:50%;width:{{ (f.impact|abs)/mx*50 }}%{% else %}right:50%;width:{{ (f.impact|abs)/mx*50 }}%{% endif %}"></i></div>
+        <b class="{{ 'up' if f.impact>0 else 'down' }}">{{ '%+.1f'|format(f.impact) }}%</b></div>
+      {% endfor %}
+    </div>
+    <div class="card"><h3>Recommendations</h3><p class="hint">Suggested next steps for the loan officer</p>
+      {% for t in tips %}<div class="tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg><span>{{ t }}</span></div>{% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="card mt"><h3>Applicant profile</h3><p class="hint">Inputs used for this prediction</p>
+  <div class="grid g3" style="gap:0 40px">
+    {% for k,v in row.items() %}<div class="stat-row"><span>{{ labels[k] }}</span><b>{% if k in ('person_income','loan_amnt') %}${{ '{:,.0f}'.format(v) }}{% elif k=='loan_int_rate' %}{{ '%.2f'|format(v) }}%{% elif k in ('person_emp_length','cb_person_cred_hist_length') %}{{ v|round(1)|string|replace('.0','') }} yrs{% elif v is number %}{{ v|int }}{% else %}{{ vlabels.get(v, v) }}{% endif %}</b></div>{% endfor %}
+  </div></div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chart.umd.js') }}"></script>
+<script>
+const p={{ p }};let g;
+function draw(){ if(g)g.destroy();
+  const col=cssVar('{{ '--low' if a.band=='Low' else '--mid' if a.band=='Moderate' else '--high' }}');
+  g=new Chart(document.getElementById('gauge'),{type:'doughnut',data:{datasets:[{data:[p,1-p],backgroundColor:[col,cssVar('--line')],borderWidth:0,borderRadius:8}]},
+   options:{rotation:-90,circumference:180,cutout:'78%',aspectRatio:1.9,plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:900}}});}
+draw();document.addEventListener('themechange',draw);
+</script>
+{% endblock %}

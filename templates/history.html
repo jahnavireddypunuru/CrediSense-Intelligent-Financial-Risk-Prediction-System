@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}History{% endblock %}
+{% block content %}
+<div class="top"><div><h1>Assessment history</h1><p class="sub">Every prediction you've run, searchable and exportable.</p></div>
+  <div style="display:flex;gap:10px"><button class="icon-btn" data-theme-toggle title="Toggle theme" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button><a class="btn ghost" href="{{ url_for('export') }}">Export CSV</a><a class="btn" href="{{ url_for('assess') }}">+ New</a></div></div>
+<div class="card">
+  <form class="toolbar" method="get">
+    <input name="q" value="{{ q }}" placeholder="Search applicant…">
+    <select name="band" onchange="this.form.submit()"><option value="">All risk levels</option>{% for b in ['Low','Moderate','High'] %}<option {{ 'selected' if band==b }}>{{ b }}</option>{% endfor %}</select>
+    <button class="btn ghost sm">Search</button>
+  </form>
+  {% if items %}
+  <div style="overflow-x:auto"><table><thead><tr><th>Applicant</th><th>Date</th><th>Loan</th><th>Default risk</th><th>Band</th><th></th></tr></thead><tbody>
+  {% for r in items %}<tr>
+    <td><div class="who"><div class="av">{{ r.applicant[0]|upper }}</div>{{ r.applicant }}</div></td>
+    <td>{{ r.created }}</td><td>${{ '{:,.0f}'.format(r.loan) }}</td>
+    <td class="mono">{{ '%.1f'|format(r.probability*100) }}%</td><td><span class="pill {{ r.band }}">{{ r.band }}</span></td>
+    <td style="white-space:nowrap;text-align:right"><a class="btn ghost sm" href="{{ url_for('result', aid=r.id) }}">Open</a>
+      <form method="post" action="{{ url_for('delete', aid=r.id) }}" style="display:inline" onsubmit="return confirm('Delete this assessment?')"><button class="btn danger">Delete</button></form></td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty"><b>No assessments found</b>Try a different search, or run a new assessment.</div>{% endif %}
+</div>
+{% endblock %}

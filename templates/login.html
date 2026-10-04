@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in · CrediSense</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script>try{var t=localStorage.getItem('cs-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+</head>
+<body>
+<div class="auth">
+  <section class="hero">
+    <div class="logo"><i>◆</i>CrediSense</div>
+    <h2>Know the risk before you lend.</h2>
+    <p>Machine-learning credit risk scoring that turns applicant details into an instant, explainable default probability.</p>
+    <div class="chips"><span>Logistic Regression</span><span>SVM</span><span>Naive Bayes</span><span>Neural Network</span></div>
+    <div class="mini">
+      <div class="row"><small>Sample applicant · default probability</small></div>
+      <div class="row" style="margin-top:6px"><b>18.4%</b><span class="pill Low" style="background:#dcfce7;color:#047857">Low risk</span></div>
+      <div class="meter"><i></i></div>
+    </div>
+    <div class="credit">Seshadri Rao Gudlavalleru Engineering College · Department of CSE</div>
+  </section>
+  <section class="formside">
+    <button class="icon-btn corner" data-theme-toggle title="Toggle theme" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    <div class="formbox">
+      <h1>Welcome back</h1>
+      <p class="sub" style="margin-bottom:26px">Sign in to your CrediSense workspace.</p>
+      {% with msgs = get_flashed_messages(with_categories=true) %}{% for c,m in msgs %}<div class="flash {{ c }}">{{ m }}</div>{% endfor %}{% endwith %}
+      <form method="post">
+        <div><label for="email">Email</label><input id="email" name="email" type="email" required autofocus placeholder="you@bank.com"></div>
+        <div><label for="password">Password</label>
+          <div class="pw"><input id="password" name="password" type="password" required placeholder="••••••••"><button type="button" data-pw="password">Show</button></div></div>
+        <button class="btn full" style="margin-top:6px">Sign in</button>
+      </form>
+      <p class="alt">New to CrediSense? <a href="{{ url_for('register') }}">Create an account</a></p>
+    </div>
+  </section>
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body></html>
